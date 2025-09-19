@@ -22,21 +22,16 @@ jobs:
       - name: Install Android SDK + accept licenses
         uses: android-actions/setup-android@v3
         with:
-          cmdline-tools: latest
+          cmdline-tools-version: latest
           accept-android-sdk-licenses: true
           packages: |
             platform-tools
             platforms;android-34
             build-tools;34.0.0
 
-      - name: Write local.properties (point Gradle to SDK)
-        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
-
-      - name: Make gradlew executable
-        run: chmod +x ./gradlew
-
-      - name: Build with Gradle (wrapper)
-        run: ./gradlew ":androidApp:assembleDebug" --stacktrace --no-daemon
+      - name: Build with Gradle
+        uses: gradle/actions/setup-gradle@v3
+      - run: gradle ":androidApp:assembleDebug" --stacktrace --no-daemon --warning-mode all
 
       - name: Collect logs & reports
         if: always()
