@@ -1,5 +1,6 @@
 name: Build Android Debug APK
 on:
+  workflow_dispatch:
   push:
     branches: [ "main" ]
     paths:
@@ -7,11 +8,13 @@ on:
       - "settings.gradle.kts"
       - "gradle.properties"
       - ".github/workflows/android.yml"
-  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      MODULE: androidApp
+      JAVA_TOOL_OPTIONS: -Xmx2g
     steps:
       - uses: actions/checkout@v4
 
@@ -19,22 +22,28 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
+          java-version: "17"
 
-      # Provereno: instalira i pokreće Gradle bez wrappera
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages & accept licenses
+        run: |
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "cmdline-tools;latest"
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+
       - name: Build with Gradle
-        uses: gradle/gradle-build-action@v2
-        with:
-          gradle-version: '8.8'
-          arguments: ":androidApp:assembleDebug --stacktrace"
+        run: |
+          ./gradlew ":${MODULE}:assembleDebug" --no-daemon --stacktrace --warning-mode all
 
       - name: Collect logs & reports
         if: always()
         run: |
-          mkdir -p artifacts/apk artifacts/logs artifacts/reports
-          cp -r androidApp/build/outputs/apk/debug/*.apk artifacts/apk/ 2>/dev/null || true
-          cp -r ~/.gradle/daemon artifacts/logs/daemon 2>/dev/null || true
-          find . -path "*/build/reports" -type d -exec cp -r {} artifacts/reports \; 2>/dev/null || true
+          mkdir -p artifacts/apk artifacts/reports
+          cp -r ${MODULE}/build/outputs/apk/debug/*.apk artifacts/apk/ 2>/dev/null || true
+          find . -path "*/build/reports" -type d -exec cp -r {} artifacts/reports/ \; 2>/dev/null || true
+          cp -r ~/.gradle/daemon artifacts/gradle-daemon 2>/dev/null || true
 
       - name: Upload APK
         if: always()
@@ -50,4 +59,3 @@ jobs:
         with:
           name: gradle-logs-and-reports
           path: artifacts
-          if-no-files-found: warn
