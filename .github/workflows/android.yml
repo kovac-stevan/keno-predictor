@@ -12,11 +12,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
+
       - name: Install Android SDK + accept licenses
         uses: android-actions/setup-android@v3
         with:
@@ -26,28 +28,15 @@ jobs:
             platform-tools
             platforms;android-34
             build-tools;34.0.0
-      - name: Write local.properties
-        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+
       - name: Make gradlew executable
         run: chmod +x ./gradlew
-      - name: Build with Gradle (wrapper)
-        run: ./gradlew ":androidApp:assembleDebug" --stacktrace --no-daemon --warning-mode all
-      - name: Collect logs & reports
-        if: always()
-        run: |
-          mkdir -p artifacts/apk artifacts/reports
-          cp -r androidApp/build/outputs/apk/debug/*.apk artifacts/apk/ 2>/dev/null || true
-          find . -path "*/build/reports" -type d -exec cp -r {} artifacts/reports \; 2>/dev/null || true
+
+      - name: Build with Gradle (Debug APK)
+        run: ./gradlew ":androidApp:assembleDebug" --stacktrace --no-daemon
+
       - name: Upload APK
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: artifacts/apk/*.apk
-          if-no-files-found: warn
-      - name: Upload Gradle logs and reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: gradle-logs-and-reports
-          path: artifacts
+          path: androidApp/build/outputs/apk/debug/*.apk
