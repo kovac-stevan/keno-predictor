@@ -1,9 +1,7 @@
-name: Build Android APK (Unsigned)
+name: Build Android APK (Signed)
 
 on:
   push:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
@@ -38,8 +36,33 @@ jobs:
       - name: Build Release APK (Unsigned)
         run: ./gradlew assembleRelease
 
-      - name: Upload Release APK (Unsigned)
+      - name: Upload Unsigned APK
         uses: actions/upload-artifact@v4
         with:
           name: app-release-unsigned
           path: app/build/outputs/apk/release/app-release-unsigned.apk
+
+      - name: Decode Keystore
+        run: echo "$KEYSTORE_BASE64" | base64 -d > keystore.jks
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+
+      - name: Sign Release APK
+        run: |
+          jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 \
+          -keystore keystore.jks -storepass ${{ secrets.KEYSTORE_PASSWORD }} \
+          -keypass ${{ secrets.KEY_PASSWORD }} \
+          app/build/outputs/apk/release/app-release-unsigned.apk \
+          ${{ secrets.KEY_ALIAS }}
+
+      - name: Zipalign APK
+        run: |
+          ${ANDROID_SDK_ROOT}/build-tools/34.0.0/zipalign -v -p 4 \
+          app/build/outputs/apk/release/app-release-unsigned.apk \
+          app/build/outputs/apk/release/app-release-signed.apk
+
+      - name: Upload Signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-signed
+          path: app/build/outputs/apk/release/app-release-signed.apk
