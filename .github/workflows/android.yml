@@ -1,8 +1,9 @@
-name: Build Android APK (Signed)
+name: Build Android APK (Unsigned)
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -10,52 +11,35 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Preuzmi kod
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # 2. JDK 17 (obavezno za Android Gradle Plugin 8+)
       - name: Set up JDK 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 17
 
-      # 3. Android SDK (bez ručnog sdkmanager)
-      - name: Set up Android SDK
+      - name: Install Android SDK
         uses: android-actions/setup-android@v3
 
-      # 4. Dozvole za gradlew
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      # 5. Debug build (za testiranje na telefonu)
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
       - name: Upload Debug APK
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: app-debug
           path: app/build/outputs/apk/debug/app-debug.apk
 
-      # 6. Release build (unsigned)
-      - name: Build Release APK
+      - name: Build Release APK (Unsigned)
         run: ./gradlew assembleRelease
 
-      # 7. Potpisivanje (koristi tvoje GitHub Secrets)
-      - name: Sign APK
-        uses: r0adkll/sign-android-release@v1
+      - name: Upload Release APK (Unsigned)
+        uses: actions/upload-artifact@v4
         with:
-          releaseDirectory: app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.KEYSTORE_BASE64 }}
-          alias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-
-      # 8. Upload signed APK
-      - name: Upload Release APK
-        uses: actions/upload-artifact@v3
-        with:
-          name: app-release-signed
-          path: app/build/outputs/apk/release/app-release-signed.apk
+          name: app-release-unsigned
+          path: app/build/outputs/apk/release/app-release-unsigned.apk
